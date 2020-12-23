@@ -28,4 +28,14 @@ limitations under the License.
 extern const unsigned char g_model[];
 extern const int g_model_len;
 
+extern const unsigned char feature_nn_tflite[];
+extern const unsigned int feature_nn_tflite_len;
+
+#define NUM_CLASSES 12
+#define NUM_FEATURES 14
+//#define NUM_DATA 3794
+#define NUM_DATA 1000
+
+extern const float data[NUM_DATA][NUM_FEATURES];
+
 #endif  // TENSORFLOW_LITE_MICRO_EXAMPLES_HELLO_WORLD_MODEL_H_

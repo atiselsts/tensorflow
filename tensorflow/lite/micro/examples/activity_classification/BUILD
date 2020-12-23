@@ -2,6 +2,10 @@
 #   On-board activity classification using TensorFlow Lite for Microcontrollers.
 
 load(
+    "//tensorflow/lite/micro/testing:micro_test.bzl",
+    "tflite_micro_cc_test",
+)
+load(
     "//tensorflow/lite/micro:build_def.bzl",
     "micro_copts",
 )
@@ -9,6 +13,22 @@ load(
 package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])  # Apache 2.0
+
+tflite_micro_cc_test(
+    name = "activity_classification_test",
+    srcs = [
+        "activity_classification_test.cc",
+    ],
+    deps = [
+        ":model",
+        "//tensorflow/lite:schema_fbs_version",
+        "//tensorflow/lite/micro:micro_error_reporter",
+        "//tensorflow/lite/micro:micro_framework",
+        "//tensorflow/lite/micro:op_resolvers",
+        "//tensorflow/lite/micro/testing:micro_test",
+        "//tensorflow/lite/schema:schema_fbs",
+    ],
+)
 
 cc_library(
     name = "model",
@@ -69,4 +89,10 @@ cc_binary(
         "//tensorflow/lite/micro:op_resolvers",
         "//tensorflow/lite/schema:schema_fbs",
     ],
+)
+
+sh_test(
+    name = "activity_classification_binary_test",
+    srcs = ["activity_classification_binary_test.sh"],
+    data = [":activity_classification"],
 )

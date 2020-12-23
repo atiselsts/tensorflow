@@ -17,7 +17,8 @@ ifneq ($(filter CMSIS,$(ALL_TAGS)),)
   CMSIS_PREPROCESSOR_HDRS := \
     tensorflow/lite/micro/examples/micro_speech/CMSIS/hanning.h \
     tensorflow/lite/micro/examples/micro_speech/CMSIS/sin_1k.h \
-    third_party/CMSIS_ext/README.md \
+
+#third_party/CMSIS_ext/README.md
 
   PREPROCESSOR_TEST_SRCS += $(CMSIS_PREPROCESSOR_SRCS)
   PREPROCESSOR_TEST_HDRS += $(CMSIS_PREPROCESSOR_HDRS)

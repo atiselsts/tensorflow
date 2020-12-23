@@ -7,13 +7,7 @@
 // this main.cc file in a target-specific subfolder.
 int main(int argc, char* argv[]) {
   setup();
- //  while (true) {
-//     loop();
-//   }
-
-  int i;
-
-  for (i = 0; i < 10; ++i)  {
-      loop();
-  }
+   while (true) {
+     loop();
+   }
 }
