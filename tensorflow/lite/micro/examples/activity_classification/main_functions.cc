@@ -11,35 +11,45 @@
 
 #include <math.h>
 
+#include "mbed.h"
+#include "LCD_DISCO_F746NG.h"
+
+extern tflite::ErrorReporter* error_reporter;
+extern LCD_DISCO_F746NG lcd;
+
 // Globals, used for compatibility with Arduino-style sketches.
 namespace {
-tflite::ErrorReporter* error_reporter = nullptr;
 const tflite::Model* model = nullptr;
 tflite::MicroInterpreter* interpreter = nullptr;
 TfLiteTensor* input = nullptr;
 TfLiteTensor* output = nullptr;
 int inference_count = 0;
 
-constexpr int kTensorArenaSize = 2000;
+//constexpr int kTensorArenaSize = 2000;
+constexpr int kTensorArenaSize = 300000;
 
 uint8_t tensor_arena[kTensorArenaSize];
 }  // namespace
 
 // The name of this function is important for Arduino compatibility.
 void setup() {
-  // Set up logging. Google style is to avoid globals or statics because of
-  // lifetime uncertainty, but since this has a trivial destructor it's okay.
-  // NOLINTNEXTLINE(runtime-global-variables)
-  static tflite::MicroErrorReporter micro_error_reporter;
-  error_reporter = &micro_error_reporter;
 
-  TF_LITE_REPORT_ERROR(error_reporter,
-          "Hello World from activity classification example!");
+    lcd.DisplayStringAt(0, LINE(1), (uint8_t *)"setup: get model", CENTER_MODE);
 
   // Map the model into a usable data structure. This doesn't involve any
   // copying or parsing, it's a very lightweight operation.
-  //model = tflite::GetModel(g_model);
+#if USE_FEATURES
   model = tflite::GetModel(feature_nn_tflite);
+#elif USE_ENCODER
+  model = tflite::GetModel(encoder_tflite);  
+#else
+  model = tflite::GetModel(clf_tflite);
+#endif
+
+  char buf[100];
+  sprintf(buf, "model: check version %p", model);
+  lcd.DisplayStringAt(0, LINE(2), (uint8_t *)buf, CENTER_MODE);
+
   if (model->version() != TFLITE_SCHEMA_VERSION) {
     TF_LITE_REPORT_ERROR(error_reporter,
                          "Model provided is schema version %d not equal "
@@ -57,12 +67,18 @@ void setup() {
       model, resolver, tensor_arena, kTensorArenaSize, error_reporter);
   interpreter = &static_interpreter;
 
+  sprintf(buf, "allocate mem");
+  lcd.DisplayStringAt(0, LINE(3), (uint8_t *)buf, CENTER_MODE);
+
   // Allocate memory from the tensor_arena for the model's tensors.
   TfLiteStatus allocate_status = interpreter->AllocateTensors();
   if (allocate_status != kTfLiteOk) {
     TF_LITE_REPORT_ERROR(error_reporter, "AllocateTensors() failed");
     return;
   }
+
+  sprintf(buf, "allocate status: %d", allocate_status);
+  lcd.DisplayStringAt(0, LINE(4), (uint8_t *)buf, CENTER_MODE);
 
   // Obtain pointers to the model's input and output tensors.
   input = interpreter->input(0);
@@ -83,7 +99,7 @@ void loop() {
   float x = position * kXrange;
 
 
-  const float *f = data[inference_count];
+  const float *f = data[inference_count * 5];
   int i;
   for (i = 0; i < NUM_FEATURES; ++i) {
     input->data.f[i] = f[i];
@@ -110,7 +126,7 @@ void loop() {
   int best_class = 0;
   TF_LITE_REPORT_ERROR(error_reporter, "output\n");
   for (i = 0; i < NUM_CLASSES; ++i) {
-      TF_LITE_REPORT_ERROR(error_reporter, "  out[%d]=%f\n", i,  output->data.f[i]);
+//      TF_LITE_REPORT_ERROR(error_reporter, "  out[%d]=%f\n", i,  output->data.f[i]);
       if (output->data.f[i] > output->data.f[best_class]) {
           best_class = i;
       }
@@ -125,4 +141,63 @@ void loop() {
   // the total number per cycle
   inference_count += 1;
   if (inference_count >= kInferencesPerCycle) inference_count = 0;
+}
+
+
+int nn_classify_single(const float features[])
+{
+  const float *f = features;
+  int i;
+  for (i = 0; i < NUM_FEATURES; ++i) {
+    input->data.f[i] = f[i];
+  }
+
+  // Run inference, and report any error
+  TfLiteStatus invoke_status = interpreter->Invoke();
+  if (invoke_status != kTfLiteOk) {
+      TF_LITE_REPORT_ERROR(error_reporter, "Invoke failed\n");
+      return -1;
+  }
+
+  int best_class = 0;
+  for (i = 0; i < NUM_CLASSES; ++i) {
+      if (output->data.f[i] > output->data.f[best_class]) {
+          best_class = i;
+      }
+  }
+
+  return best_class;
+}
+
+int nn_classify_single_from_data(const float data[])
+{
+  // pass input data
+  lcd.DisplayStringAt(0, LINE(1), (uint8_t *)"set input data", CENTER_MODE);
+
+  const float *f = data;
+  int i;
+  for (i = 0; i < WINDOW_SIZE; ++i) {
+    input->data.f[i] = f[i];
+  }
+
+  lcd.DisplayStringAt(0, LINE(2), (uint8_t *)"input data set", CENTER_MODE);
+
+  // Run inference, and report any error
+  TfLiteStatus invoke_status = interpreter->Invoke();
+  lcd.DisplayStringAt(0, LINE(3), (uint8_t *)"invoke done", CENTER_MODE);
+
+  if (invoke_status != kTfLiteOk) {
+      TF_LITE_REPORT_ERROR(error_reporter, "Invoke failed\n");
+      return -1;
+  }
+
+  // select the best class
+  int best_class = 0;
+  for (i = 0; i < NUM_LABELS; ++i) {
+      if (output->data.f[i] > output->data.f[best_class]) {
+          best_class = i;
+      }
+  }
+
+  return best_class;
 }

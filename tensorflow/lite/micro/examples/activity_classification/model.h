@@ -25,17 +25,32 @@ limitations under the License.
 #ifndef TENSORFLOW_LITE_MICRO_EXAMPLES_HELLO_WORLD_MODEL_H_
 #define TENSORFLOW_LITE_MICRO_EXAMPLES_HELLO_WORLD_MODEL_H_
 
-extern const unsigned char g_model[];
-extern const int g_model_len;
+#define USE_FEATURES 0
+#define USE_ENCODER 1
 
+#if USE_FEATURES
 extern const unsigned char feature_nn_tflite[];
-extern const unsigned int feature_nn_tflite_len;
+extern unsigned int feature_nn_tflite_len;
+#elif USE_ENCODER
+extern const unsigned char encoder_tflite[];
+extern unsigned int encoder_tflite_len;
+#else
+extern const unsigned char clf_tflite[];
+extern unsigned int clf_tflite_len;
+#endif
 
 #define NUM_CLASSES 12
 #define NUM_FEATURES 14
 //#define NUM_DATA 3794
 #define NUM_DATA 1000
 
+#define WINDOW_SIZE 256
+#define NUM_RAW_DATA 1
+#define NUM_LABELS 25
+
 extern const float data[NUM_DATA][NUM_FEATURES];
+
+extern const float raw_data[NUM_RAW_DATA][WINDOW_SIZE];
+
 
 #endif  // TENSORFLOW_LITE_MICRO_EXAMPLES_HELLO_WORLD_MODEL_H_

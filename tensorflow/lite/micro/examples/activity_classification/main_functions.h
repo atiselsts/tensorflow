@@ -30,6 +30,10 @@ void setup();
 // compatibility.
 void loop();
 
+int nn_classify_single(const float []);
+
+int nn_classify_single_from_data(const float []);
+
 #ifdef __cplusplus
 }
 #endif

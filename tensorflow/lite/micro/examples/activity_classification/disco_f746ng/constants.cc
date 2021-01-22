@@ -18,4 +18,4 @@ limitations under the License.
 // A larger number than the default to make the animation smoother
 //const int kInferencesPerCycle = 70;
 
-const int kInferencesPerCycle = 1000;
+const int kInferencesPerCycle = 200;
