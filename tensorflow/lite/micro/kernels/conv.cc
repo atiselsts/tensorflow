@@ -84,6 +84,8 @@ TfLiteStatus CalculateOpData(TfLiteContext* context, TfLiteNode* node,
   TF_LITE_ENSURE(context, has_bias || node->inputs->size == 2);
   TF_LITE_ENSURE_EQ(context, node->outputs->size, 1);
 
+  printf("calculateopdata\n");
+
   // Matching GetWindowedOutputSize in TensorFlow.
   auto padding = params->padding;
   data->padding = ComputePaddingHeightWidth(
@@ -104,6 +106,7 @@ TfLiteStatus CalculateOpData(TfLiteContext* context, TfLiteNode* node,
     TF_LITE_ENSURE(context, output != nullptr);
     int output_channels = filter->dims->data[kConvQuantizedDimension];
 
+    printf("PopulateConvolutionQuantizationParams\n");
     TF_LITE_ENSURE_STATUS(tflite::PopulateConvolutionQuantizationParams(
         context, input, filter, bias, output, params->activation,
         &data->output_multiplier, &data->output_shift,
@@ -111,6 +114,7 @@ TfLiteStatus CalculateOpData(TfLiteContext* context, TfLiteNode* node,
         data->per_channel_output_multiplier,
         reinterpret_cast<int*>(data->per_channel_output_shift),
         output_channels));
+    printf("PopulateConvolutionQuantizationParams done\n");
   }
   return kTfLiteOk;
 }
@@ -121,6 +125,9 @@ void* Init(TfLiteContext* context, const char* buffer, size_t length) {
 }
 
 TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
+
+  printf("CONV_2D - generic - Prepare\n");
+        
   TFLITE_DCHECK(node->user_data != nullptr);
   TFLITE_DCHECK(node->builtin_data != nullptr);
 
@@ -128,6 +135,7 @@ TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
   const auto params = static_cast<const TfLiteConvParams*>(node->builtin_data);
 
   TfLiteTensor* output = GetOutput(context, node, kOutputTensor);
+
   TF_LITE_ENSURE(context, output != nullptr);
   const TfLiteTensor* input = GetInput(context, node, kInputTensor);
   TF_LITE_ENSURE(context, input != nullptr);
@@ -327,6 +335,7 @@ TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
 }  // namespace
 
 TfLiteRegistration Register_CONV_2D() {
+    printf("Register_CONV_2D - generic\n");
   return {/*init=*/Init,
           /*free=*/nullptr,
           /*prepare=*/Prepare,

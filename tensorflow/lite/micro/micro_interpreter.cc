@@ -290,6 +290,7 @@ TfLiteStatus MicroInterpreter::AllocateTensors() {
     auto* node = &(node_and_registrations_[i].node);
     auto* registration = node_and_registrations_[i].registration;
     if (registration->prepare) {
+        printf("prepare node %s (%df)\n", OpNameFromRegistration(registration), i);
       TfLiteStatus prepare_status = registration->prepare(&context_, node);
       if (prepare_status != kTfLiteOk) {
         TF_LITE_REPORT_ERROR(
@@ -387,6 +388,7 @@ TfLiteTensor* MicroInterpreter::input(size_t index) {
                                                      inputs().Get(index));
   }
   if (input_tensor_ == nullptr) {
+      printf("ALLOCATE INPUT TENSOR, index=%d\n", (int)inputs().Get(index));
     input_tensor_ = allocator_.AllocatePersistentTfLiteTensor(
         model_, eval_tensors_, inputs().Get(index));
   }
@@ -413,6 +415,7 @@ TfLiteTensor* MicroInterpreter::output(size_t index) {
   if (output_tensor_ == nullptr) {
     // TODO(b/162311891): Drop these allocations when the interpreter supports
     // handling buffers from TfLiteEvalTensor.
+      printf("ALLOCATE OUTPUT TENSOR, index=%d\n", (int)inputs().Get(index));
     output_tensor_ = allocator_.AllocatePersistentTfLiteTensor(
         model_, eval_tensors_, outputs().Get(index));
   }

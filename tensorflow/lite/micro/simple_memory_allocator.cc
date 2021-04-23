@@ -34,7 +34,9 @@ SimpleMemoryAllocator::SimpleMemoryAllocator(ErrorReporter* error_reporter,
       buffer_tail_(buffer_tail),
       head_(buffer_head),
       tail_(buffer_tail),
-      temp_(buffer_head_) {}
+      temp_(buffer_head_) {
+    printf("SimpleMemoryAllocator: head=%x tail=%x\n", (unsigned)head_, (unsigned)tail_);
+}
 
 SimpleMemoryAllocator::SimpleMemoryAllocator(ErrorReporter* error_reporter,
                                              uint8_t* buffer,
@@ -87,6 +89,7 @@ TfLiteStatus SimpleMemoryAllocator::SetHeadBufferSize(size_t size,
 
 uint8_t* SimpleMemoryAllocator::AllocateFromTail(size_t size,
                                                  size_t alignment) {
+  printf("AllocateFromTail: tail=%x\n", (unsigned)tail_);
   uint8_t* const aligned_result = AlignPointerDown(tail_ - size, alignment);
   if (aligned_result < head_) {
 #ifndef TF_LITE_STRIP_ERROR_STRINGS

@@ -22,6 +22,8 @@ limitations under the License.
 #include "tensorflow/lite/micro/micro_string.h"
 #endif
 
+#include <stdio.h>
+
 namespace tflite {
 
 int MicroErrorReporter::Report(const char* format, va_list args) {
