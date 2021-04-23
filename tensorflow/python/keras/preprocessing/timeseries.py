@@ -14,9 +14,6 @@
 # ==============================================================================
 """Keras timeseries dataset utilities."""
 # pylint: disable=g-classes-have-attributes
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import numpy as np
 
@@ -45,7 +42,7 @@ def timeseries_dataset_from_array(
   length of the sequences/windows, spacing between two sequence/windows, etc.,
   to produce batches of timeseries inputs and targets.
 
-  Arguments:
+  Args:
     data: Numpy array or eager tensor
       containing consecutive data points (timesteps).
       Axis 0 is expected to be the time dimension.

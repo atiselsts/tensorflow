@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Common utils for benchmark."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+"""Common utils for benchmarks."""
 
 import timeit
 import numpy as np
@@ -33,7 +30,7 @@ def get_benchmark_name(name):
 
   This is to generate the metadata of the benchmark test.
 
-  Arguments:
+  Args:
     name: A string, the benchmark name.
 
   Returns:
@@ -47,7 +44,7 @@ def get_benchmark_name(name):
 def generate_benchmark_params_cpu_gpu(*params_list):
   """Extend the benchmark names with CPU and GPU suffix.
 
-  Arguments:
+  Args:
     *params_list: A list of tuples represents the benchmark parameters.
 
   Returns:
@@ -62,6 +59,16 @@ def generate_benchmark_params_cpu_gpu(*params_list):
         ((param[0] + '_GPU',) + param[1:]) for param in params
     ])
   return benchmark_params
+
+
+def get_keras_examples_metadata(keras_model,
+                                batch_size,
+                                impl='.keras.cfit_graph'):
+  return {
+      'model_name': 'keras_examples',
+      'implementation': keras_model + impl,
+      'parameters': 'bs_' + str(batch_size),
+  }
 
 
 class TimerCallBack(tf.keras.callbacks.Callback):
@@ -99,7 +106,7 @@ def measure_performance(model_fn,
                         distribution_strategy='off'):
   """Run models and measure the performance.
 
-  Arguments:
+  Args:
     model_fn: Model function to be benchmarked.
     x: Input data. See `x` in the `fit()` method of `keras.Model`.
     y: Target data. See `y` in the `fit()` method of `keras.Model`.

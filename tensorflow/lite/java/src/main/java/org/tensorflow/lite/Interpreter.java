@@ -73,13 +73,11 @@ import org.checkerframework.checker.nullness.qual.NonNull;
  * obtained via the {@link Tensor} class, available via {@link #getInputTensor(int)} and {@link
  * #getOutputTensor(int)}.
  *
- * <p><b>WARNING:</b>Instances of a {@code Interpreter} is <b>not</b> thread-safe. A {@code
- * Interpreter} owns resources that <b>must</b> be explicitly freed by invoking {@link #close()}
+ * <p><b>WARNING:</b>{@code Interpreter} instances are <b>not</b> thread-safe. A {@code Interpreter}
+ * owns resources that <b>must</b> be explicitly freed by invoking {@link #close()}
  *
  * <p>The TFLite library is built against NDK API 19. It may work for Android API levels below 19,
  * but is not guaranteed.
- *
- * <p>Note: This class is not thread safe.
  */
 public final class Interpreter implements AutoCloseable {
 
@@ -88,8 +86,12 @@ public final class Interpreter implements AutoCloseable {
     public Options() {}
 
     /**
-     * Sets the number of threads to be used for ops that support multi-threading. Defaults to a
-     * platform-dependent value.
+     * Sets the number of threads to be used for ops that support multi-threading.
+     *
+     * <p>{@code numThreads} should be >= -1. Setting {@code numThreads} to 0 has the effect to
+     * disable multithreading, which is equivalent to setting {@code numThreads} to 1. If
+     * unspecified, or set to the value -1, the number of threads used will be
+     * implementation-defined and platform-dependent.
      */
     public Options setNumThreads(int numThreads) {
       this.numThreads = numThreads;
@@ -383,7 +385,7 @@ public final class Interpreter implements AutoCloseable {
    * @param inputs A Map of inputs from input name in the signatureDef to an input object.
    * @param outputs a map mapping from output name in SignatureDef to output data.
    * @param methodName The exported method name identifying the SignatureDef.
-   * @throws IllegalArgumentException if {@code inputs} or {@code outputs} or {@code methodName}is
+   * @throws IllegalArgumentException if {@code inputs} or {@code outputs} or {@code methodName} is
    *     null or empty, or if error occurs when running the inference.
    *
    * <p>WARNING: This is an experimental API and subject to change.
@@ -400,7 +402,7 @@ public final class Interpreter implements AutoCloseable {
       throw new IllegalArgumentException(
           "Input error: SignatureDef methodName should not be null. null is only allowed if the"
               + " model has a single Signature. Available Signatures: "
-              +  Arrays.toString(signatureNameList));
+              + Arrays.toString(signatureNameList));
     }
     wrapper.runSignature(inputs, outputs, methodName);
   }
@@ -499,6 +501,31 @@ public final class Interpreter implements AutoCloseable {
   }
 
   /**
+   * Gets the Tensor associated with the provdied input name and signature method name.
+   *
+   * @param inputName Input name in the signature.
+   * @param methodName The exported method name identifying the SignatureDef, can be null if the
+   *     model has one signature.
+   * @throws IllegalArgumentException if {@code inputName} or {@code methodName} is null or empty,
+   *     or invalid name provided.
+   *
+   * <p>WARNING: This is an experimental API and subject to change.
+   */
+  public Tensor getInputTensorFromSignature(String inputName, String methodName) {
+    checkNotClosed();
+    if (methodName == null && signatureNameList.length == 1) {
+      methodName = signatureNameList[0];
+    }
+    if (methodName == null) {
+      throw new IllegalArgumentException(
+          "Input error: SignatureDef methodName should not be null. null is only allowed if the"
+              + " model has a single Signature. Available Signatures: "
+              + Arrays.toString(signatureNameList));
+    }
+    return wrapper.getInputTensor(inputName, methodName);
+  }
+
+  /**
    * Gets the list of SignatureDef exported method names available in the model.
    *
    * <p>WARNING: This is an experimental API and subject to change.
@@ -561,6 +588,38 @@ public final class Interpreter implements AutoCloseable {
   public Tensor getOutputTensor(int outputIndex) {
     checkNotClosed();
     return wrapper.getOutputTensor(outputIndex);
+  }
+
+  /**
+   * Gets the Tensor associated with the provdied output name in specifc signature method.
+   *
+   * <p>Note: Output tensor details (e.g., shape) may not be fully populated until after inference
+   * is executed. If you need updated details *before* running inference (e.g., after resizing an
+   * input tensor, which may invalidate output tensor shapes), use {@link #allocateTensors()} to
+   * explicitly trigger allocation and shape propagation. Note that, for graphs with output shapes
+   * that are dependent on input *values*, the output shape may not be fully determined until
+   * running inference.
+   *
+   * @param outputName Output name in the signature.
+   * @param methodName The exported method name identifying the SignatureDef, can be null if the
+   *     model has one signature.
+   * @throws IllegalArgumentException if {@code outputName} or {@code methodName} is null or empty,
+   *     or invalid name provided.
+   *
+   * <p>WARNING: This is an experimental API and subject to change.
+   */
+  public Tensor getOutputTensorFromSignature(String outputName, String methodName) {
+    checkNotClosed();
+    if (methodName == null && signatureNameList.length == 1) {
+      methodName = signatureNameList[0];
+    }
+    if (methodName == null) {
+      throw new IllegalArgumentException(
+          "Input error: SignatureDef methodName should not be null. null is only allowed if the"
+              + " model has a single Signature. Available Signatures: "
+              + Arrays.toString(signatureNameList));
+    }
+    return wrapper.getOutputTensor(outputName, methodName);
   }
 
   /**

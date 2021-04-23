@@ -13,9 +13,6 @@
 # limitations under the License.
 # ==============================================================================
 """Benchmark tests for Keras optimizers."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import tensorflow as tf
 
@@ -58,7 +55,7 @@ class KerasOptimizerBenchmark(
   def benchmark_optimizer(self, optimizer, num_iters):
     """Optimizer benchmark with Bidirectional LSTM model on IMDB data.
 
-    Arguments:
+    Args:
       optimizer: The optimizer instance to be benchmarked.
       num_iters: The number of iterations to run for performance measurement.
     """

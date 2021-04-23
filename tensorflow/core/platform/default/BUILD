@@ -8,7 +8,7 @@ package(
     default_visibility = [
         "//tensorflow/core/platform:__pkg__",
     ],
-    licenses = ["notice"],  # Apache 2.0
+    licenses = ["notice"],
 )
 
 cc_library(
@@ -433,7 +433,6 @@ tf_cc_test(
     name = "test_benchmark_test",
     srcs = ["test_benchmark_test.cc"],
     tags = [
-        "no_windows",  # TODO(b/174616766): re-enable once it's fixed.
         "nobuilder",
         "notap",
     ],

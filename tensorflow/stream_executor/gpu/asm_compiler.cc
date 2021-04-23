@@ -16,6 +16,7 @@ limitations under the License.
 #include "tensorflow/stream_executor/gpu/asm_compiler.h"
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/strings/str_format.h"
 #include "absl/synchronization/mutex.h"
 #include "tensorflow/core/lib/core/errors.h"
@@ -176,6 +177,33 @@ static std::string findCudaExecutable(const std::string binary_name,
   return binary_path;
 }
 
+static void LogPtxasTooOld(const std::string& ptxas_path, int cc_major,
+                           int cc_minor) {
+  using AlreadyLoggedSetTy =
+      absl::flat_hash_set<std::tuple<std::string, int, int>>;
+
+  static absl::Mutex* mutex = new absl::Mutex;
+  static AlreadyLoggedSetTy* already_logged = new AlreadyLoggedSetTy;
+
+  absl::MutexLock lock(mutex);
+
+  if (already_logged->insert({ptxas_path, cc_major, cc_minor}).second) {
+    LOG(WARNING) << "Falling back to the CUDA driver for PTX compilation; "
+                    "ptxas does not support CC "
+                 << cc_major << "." << cc_minor;
+    LOG(WARNING) << "Used ptxas at " << ptxas_path;
+  }
+}
+
+static void AppendArgsFromOptions(GpuAsmOpts options,
+                                  std::vector<std::string>& args) {
+  if (options.disable_gpuasm_optimizations) {
+    args.push_back("-O0");
+  }
+  args.insert(args.end(), options.extra_flags.begin(),
+              options.extra_flags.end());
+}
+
 port::StatusOr<std::vector<uint8>> CompileGpuAsm(int cc_major, int cc_minor,
                                                  const char* ptx_contents,
                                                  GpuAsmOpts options) {
@@ -215,11 +243,7 @@ port::StatusOr<std::vector<uint8>> CompileGpuAsm(int cc_major, int cc_minor,
   if (VLOG_IS_ON(2)) {
     ptxas_args.push_back("-v");
   }
-  if (options.disable_gpuasm_optimizations) {
-    ptxas_args.push_back("-O0");
-  }
-  ptxas_args.insert(ptxas_args.end(), options.extra_flags.begin(),
-                    options.extra_flags.end());
+  AppendArgsFromOptions(options, ptxas_args);
   if (VLOG_IS_ON(3)) {
     VLOG(3) << absl::StrJoin(ptxas_args, " ");
   }
@@ -241,10 +265,7 @@ port::StatusOr<std::vector<uint8>> CompileGpuAsm(int cc_major, int cc_minor,
     if (absl::StartsWith(stderr_output, "ptxas fatal   : Value '") &&
         absl::StrContains(stderr_output,
                           "is not defined for option 'gpu-name'")) {
-      LOG(WARNING) << "Your CUDA software stack is old. We fallback to the"
-                   << " NVIDIA driver for some compilation. Update your CUDA"
-                   << " version to get the best performance."
-                   << " The ptxas error was: " << stderr_output;
+      LogPtxasTooOld(ptxas_path, cc_major, cc_minor);
       return tensorflow::errors::Unimplemented(
           ptxas_path, " ptxas too old. Falling back to the driver to compile.");
     }
@@ -267,9 +288,9 @@ port::StatusOr<std::vector<uint8>> CompileGpuAsm(int cc_major, int cc_minor,
 }
 
 port::StatusOr<std::vector<uint8>> BundleGpuAsm(
-    std::vector<CubinOrPTXImage> images, const std::string preferred_cuda_dir) {
+    std::vector<CubinOrPTXImage> images, GpuAsmOpts options) {
   std::string fatbinary_path =
-      findCudaExecutable("fatbinary", preferred_cuda_dir);
+      findCudaExecutable("fatbinary", options.preferred_cuda_dir);
 
   // Write images to temporary files.
   std::vector<std::string> image_paths;
@@ -303,11 +324,19 @@ port::StatusOr<std::vector<uint8>> BundleGpuAsm(
     tensorflow::Env::Default()->DeleteFile(result_path).IgnoreError();
   });
 
+  // Compute the ptxas options that were used to produce the cubins.
+  std::vector<std::string> ptxas_options;
+  AppendArgsFromOptions(options, ptxas_options);
+
   // Invoke fatbinary and collect its output.
   tensorflow::SubProcess fatbinary;
   std::vector<std::string> fatbinary_args = {
-      fatbinary_path, "--64",           "--cmdline=--compile-only",
-      "--link",       "--compress-all", absl::StrCat("--create=", result_path)};
+      fatbinary_path, "--64", "--link", "--compress-all",
+      absl::StrCat("--create=", result_path)};
+  if (!ptxas_options.empty()) {
+    auto command_line = absl::StrJoin(ptxas_options, " ");
+    fatbinary_args.push_back(absl::StrFormat("--cmdline=%s", command_line));
+  }
   assert(images.size() == image_paths.size());
   for (int i = 0; i < images.size(); i++) {
     fatbinary_args.push_back(absl::StrFormat(

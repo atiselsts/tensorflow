@@ -14,10 +14,6 @@
 # ==============================================================================
 """Tests for layer wrappers."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import copy
 
 from absl.testing import parameterized
@@ -27,6 +23,7 @@ from tensorflow.python import keras
 from tensorflow.python.eager import context
 from tensorflow.python.framework import constant_op
 from tensorflow.python.framework import dtypes
+from tensorflow.python.framework import ops
 from tensorflow.python.framework import tensor_shape
 from tensorflow.python.framework import test_util as tf_test_util
 from tensorflow.python.keras import combinations
@@ -40,6 +37,7 @@ from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops.ragged import ragged_factory_ops
 from tensorflow.python.ops.ragged import ragged_tensor
+from tensorflow.python.ops.ragged import ragged_tensor_value
 from tensorflow.python.platform import test
 from tensorflow.python.training.tracking import util as trackable_util
 from tensorflow.python.util import nest
@@ -432,8 +430,7 @@ class TimeDistributedTest(keras_parameterized.TestCase):
     model_2._run_eagerly = testing_utils.should_run_eagerly()
     output_dense = model_2.predict(dense_data, steps=1)
 
-    output_ragged = ragged_tensor.convert_to_tensor_or_ragged_tensor(
-        output_ragged, name='tensor')
+    output_ragged = convert_ragged_tensor_value(output_ragged)
     self.assertAllEqual(output_ragged.to_tensor(), output_dense)
 
   @keras_parameterized.run_all_keras_modes
@@ -461,8 +458,7 @@ class TimeDistributedTest(keras_parameterized.TestCase):
     dense_data = ragged_data.to_tensor()
     output_dense = model_2.predict(dense_data, steps=1)
 
-    output_ragged = ragged_tensor.convert_to_tensor_or_ragged_tensor(
-        output_ragged, name='tensor')
+    output_ragged = convert_ragged_tensor_value(output_ragged)
     self.assertAllEqual(output_ragged.to_tensor(), output_dense)
 
   def test_TimeDistributed_set_static_shape(self):
@@ -1032,13 +1028,10 @@ class BidirectionalTest(test.TestCase, parameterized.TestCase):
           input_layer.compute_output_shape([None, 2, 4]).as_list(),
           [None, 2, 16])
 
+  @test.disable_with_predicate(
+      pred=test.is_built_with_rocm,
+      skip_message='Skipping as ROCm MIOpen does not support padded input yet.')
   def test_Bidirectional_last_output_with_masking(self):
-    if test.is_built_with_rocm():
-      # testcase uses input and/or output sequences which require padding
-      # leading to the following error on ROCm platform
-      # ROCm MIOpen only supports packed input output
-      # Skip this subtest for now
-      self.skipTest('Test not supported on the ROCm platform')
     rnn = keras.layers.LSTM
     samples = 2
     dim = 5
@@ -1065,13 +1058,10 @@ class BidirectionalTest(test.TestCase, parameterized.TestCase):
       self.assertAllClose(y[0], np.concatenate([y[1], y[3]], axis=1))
 
   @parameterized.parameters([keras.layers.LSTM, keras.layers.GRU])
+  @test.disable_with_predicate(
+      pred=test.is_built_with_rocm,
+      skip_message='Skipping as ROCm MIOpen does not support padded input yet.')
   def test_Bidirectional_sequence_output_with_masking(self, rnn):
-    if test.is_built_with_rocm():
-      # testcase uses input and/or output sequences which require padding
-      # leading to the following error on ROCm platform
-      # ROCm MIOpen only supports packed input output
-      # Skip this subtest for now
-      self.skipTest('Test not supported on the ROCm platform')
     samples = 2
     dim = 5
     timesteps = 3
@@ -1273,10 +1263,10 @@ class BidirectionalTest(test.TestCase, parameterized.TestCase):
         batch_size=10)
 
   @parameterized.parameters(['ave', 'concat', 'mul'])
+  @test.disable_with_predicate(
+      pred=test.is_built_with_rocm,
+      skip_message='Skipping as ROCm RNN does not support ragged tensors yet.')
   def test_Bidirectional_ragged_input(self, merge_mode):
-    if test.is_built_with_rocm():
-      # ragged tenors are not supported in ROCM RNN implementation
-      self.skipTest('Test not supported on the ROCm platform')
     np.random.seed(100)
     rnn = keras.layers.LSTM
     units = 3
@@ -1316,10 +1306,10 @@ class BidirectionalTest(test.TestCase, parameterized.TestCase):
 
       y_merged = f_merged(x)
       y_expected = merge_func(
-          ragged_tensor.convert_to_tensor_or_ragged_tensor(f_forward(x)),
-          ragged_tensor.convert_to_tensor_or_ragged_tensor(f_backward(x)))
+          convert_ragged_tensor_value(f_forward(x)),
+          convert_ragged_tensor_value(f_backward(x)))
 
-      y_merged = ragged_tensor.convert_to_tensor_or_ragged_tensor(y_merged)
+      y_merged = convert_ragged_tensor_value(y_merged)
       self.assertAllClose(y_merged.flat_values, y_expected.flat_values)
 
   def test_full_input_spec(self):
@@ -1370,6 +1360,16 @@ def _to_list(ls):
     return ls
   else:
     return [ls]
+
+
+def convert_ragged_tensor_value(inputs):
+  if isinstance(inputs, ragged_tensor_value.RaggedTensorValue):
+    flat_values = ops.convert_to_tensor_v2_with_dispatch(
+        value=inputs.flat_values,
+        name='flat_values')
+    return ragged_tensor.RaggedTensor.from_nested_row_splits(
+        flat_values, inputs.nested_row_splits, validate=False)
+  return inputs
 
 
 if __name__ == '__main__':

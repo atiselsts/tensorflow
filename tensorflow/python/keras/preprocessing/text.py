@@ -12,12 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Utilities for text input preprocessing.
-"""
+"""Utilities for text input preprocessing."""
 # pylint: disable=invalid-name
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 from keras_preprocessing import text
 
@@ -42,7 +38,7 @@ def text_to_word_sequence(input_text,
   >>> tf.keras.preprocessing.text.text_to_word_sequence(sample_text)
   ['this', 'is', 'a', 'sample', 'sentence']
 
-  Arguments:
+  Args:
       input_text: Input text (string).
       filters: list (or concatenation) of characters to filter out, such as
           punctuation. Default: ``'!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\\t\\n'``,
@@ -69,7 +65,7 @@ def one_hot(input_text,
   list of encoded integers each corresponding to a word (or token)
   in the given input string.
 
-  Arguments:
+  Args:
       input_text: Input text (string).
       n: int. Size of vocabulary.
       filters: list (or concatenation) of characters to filter out, such as

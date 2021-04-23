@@ -1,9 +1,11 @@
+load("//tensorflow:tensorflow.bzl", "tf_cc_test")
+
 # Kernel for custom parse_example
 package(
     default_visibility = [
         "//visibility:public",
     ],
-    licenses = ["notice"],  # Apache 2.0
+    licenses = ["notice"],
 )
 
 cc_library(
@@ -44,7 +46,7 @@ cc_library(
     }),
 )
 
-cc_test(
+tf_cc_test(
     name = "parse_example_test",
     srcs = ["parse_example_test.cc"],
     deps = [
