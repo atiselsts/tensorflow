@@ -34,10 +34,12 @@ limitations under the License.
 #include "tensorflow/lite/schema/schema_generated.h"
 #include "tensorflow/lite/schema/schema_utils.h"
 
+#if USE_LCD
 #include "mbed.h"
 #include "LCD_DISCO_F746NG.h"
 
 extern LCD_DISCO_F746NG lcd;
+#endif
 
 namespace tflite {
 
@@ -950,23 +952,27 @@ TfLiteStatus MicroAllocator::AllocateTfLiteEvalTensors(
 
   auto* subgraphs = model->subgraphs();
 
+  const SubGraph* subgraph = GetSubGraphFromModel(model);
+    
+#if USE_LCD
   char buf[100];
   sprintf(buf, "get subgraph, size=%u", subgraphs->size());
   lcd.DisplayStringAt(0, LINE(6), (uint8_t *)buf, CENTER_MODE);
 
-
-  const SubGraph* subgraph = GetSubGraphFromModel(model);
   sprintf(buf, "sg=%p", subgraph);
   lcd.DisplayStringAt(0, LINE(7), (uint8_t *)buf, CENTER_MODE);
-
+#endif
+  
   TFLITE_DCHECK(subgraph != nullptr);
 
 
   size_t alloc_count = subgraph->tensors()->size();
 
+#if USE_LCD
   sprintf(buf, "alloc_count=%u", alloc_count);
   lcd.DisplayStringAt(0, LINE(8), (uint8_t *)buf, CENTER_MODE);
-
+#endif
+  
   TfLiteEvalTensor* tensors =
       reinterpret_cast<TfLiteEvalTensor*>(memory_allocator_->AllocateFromTail(
           sizeof(TfLiteEvalTensor) * alloc_count, alignof(TfLiteEvalTensor)));
@@ -988,7 +994,9 @@ TfLiteStatus MicroAllocator::AllocateTfLiteEvalTensors(
       return kTfLiteError;
     }
   }
+#if USE_LCD
   lcd.DisplayStringAt(0, LINE(9), (uint8_t *)"alloc done", CENTER_MODE);
+#endif
 
   *eval_tensors = tensors;
   return kTfLiteOk;

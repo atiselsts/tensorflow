@@ -3,8 +3,13 @@
 #include "tensorflow/lite/micro/examples/activity_classification/model.h"
 #include "tensorflow/lite/micro/micro_error_reporter.h"
 
+#include <stdint.h>
+#include <stdio.h>
+
+#if USE_LCD
 #include "mbed.h"
 #include "LCD_DISCO_F746NG.h"
+#endif
 
 tflite::ErrorReporter* error_reporter = nullptr;
 
@@ -20,10 +25,11 @@ mbed compile -m DISCO_F746NG -t GCC_ARM && cp ./BUILD/DISCO_F746NG/GCC_ARM/mbed.
 
 */
 
-
+#if USE_LCD
 LCD_DISCO_F746NG lcd;
+#endif
 
-#define NUM_TESTS 1
+#define NUM_TESTS 2
 
 int nn_classify(void)
 {
@@ -45,6 +51,7 @@ int nn_classify(void)
 
 void classify(void)
 {
+#if USE_LCD
     uint64_t start = get_ms_count();
     int i;
     int dummy = 0;
@@ -56,7 +63,18 @@ void classify(void)
     char buf[100];
     sprintf(buf, "%u tests: %llu ms (%d)", NUM_TESTS, delta, dummy);
     TF_LITE_REPORT_ERROR(error_reporter, buf);
-    lcd.DisplayStringAt(0, LINE(4), (uint8_t *)buf, CENTER_MODE);
+    lcd.DisplayStringAt(0, LINE(6), (uint8_t *)buf, CENTER_MODE);
+
+#else
+
+    int i;
+    int dummy = 0;
+    for (i = 0; i < NUM_TESTS; ++i) {
+        dummy += nn_classify();
+    }
+    printf("classify done, dummy=%u\n", dummy);
+
+#endif
 }
 
 // This is the default main used on systems that have the standard C entry
@@ -74,16 +92,20 @@ int main(int argc, char* argv[]) {
   TF_LITE_REPORT_ERROR(error_reporter,
           "Hello World from activity classification example!");
 
+#if USE_LCD
   lcd.Clear(LCD_COLOR_WHITE);
   lcd.SetTextColor(LCD_COLOR_BLACK);
   lcd.DisplayStringAt(0, LINE(0), (uint8_t *)"Activity class. example", CENTER_MODE);
+#endif
 
     setup();
   //  while (true) {
   //    loop();
   //  }
 
+#if USE_LCD
     lcd.DisplayStringAt(0, LINE(1), (uint8_t *)"Setup done", CENTER_MODE);
+#endif
 
-//    classify();
+    classify();
 }

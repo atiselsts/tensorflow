@@ -1044,6 +1044,8 @@ alignas(8) const
 # include "/home/atis/work/on-board/rf/nn-export-3.c"
 #elif USE_ENCODER
 # include "/home/atis/work/on-board/ryan/encoder.c"
+#elif USE_NN
+# include "/home/atis/work/on-board/cnn/cnn_quant_int.c"
 #else
 # include "/home/atis/work/on-board/ryan/clf.c"
 #endif

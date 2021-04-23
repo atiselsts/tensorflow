@@ -11,11 +11,14 @@
 
 #include <math.h>
 
+#if USE_LCD
 #include "mbed.h"
 #include "LCD_DISCO_F746NG.h"
 
-extern tflite::ErrorReporter* error_reporter;
 extern LCD_DISCO_F746NG lcd;
+#endif
+
+extern tflite::ErrorReporter* error_reporter;
 
 // Globals, used for compatibility with Arduino-style sketches.
 namespace {
@@ -34,21 +37,26 @@ uint8_t tensor_arena[kTensorArenaSize];
 // The name of this function is important for Arduino compatibility.
 void setup() {
 
+#if USE_LCD
+    char buf[100];
+
     lcd.DisplayStringAt(0, LINE(1), (uint8_t *)"setup: get model", CENTER_MODE);
+#endif
 
   // Map the model into a usable data structure. This doesn't involve any
   // copying or parsing, it's a very lightweight operation.
 #if USE_FEATURES
   model = tflite::GetModel(feature_nn_tflite);
 #elif USE_ENCODER
-  model = tflite::GetModel(encoder_tflite);  
+  model = tflite::GetModel(encoder_tflite);
+#elif USE_NN
+  model = tflite::GetModel(cnn_quant_int_tflite);
 #else
   model = tflite::GetModel(clf_tflite);
 #endif
 
-  char buf[100];
-  sprintf(buf, "model: check version %p", model);
-  lcd.DisplayStringAt(0, LINE(2), (uint8_t *)buf, CENTER_MODE);
+  // sprintf(buf, "model: check version %p", model);
+  // lcd.DisplayStringAt(0, LINE(2), (uint8_t *)buf, CENTER_MODE);
 
   if (model->version() != TFLITE_SCHEMA_VERSION) {
     TF_LITE_REPORT_ERROR(error_reporter,
@@ -67,18 +75,18 @@ void setup() {
       model, resolver, tensor_arena, kTensorArenaSize, error_reporter);
   interpreter = &static_interpreter;
 
-  sprintf(buf, "allocate mem");
-  lcd.DisplayStringAt(0, LINE(3), (uint8_t *)buf, CENTER_MODE);
+  // sprintf(buf, "allocate mem");
+  // lcd.DisplayStringAt(0, LINE(3), (uint8_t *)buf, CENTER_MODE);
 
   // Allocate memory from the tensor_arena for the model's tensors.
   TfLiteStatus allocate_status = interpreter->AllocateTensors();
   if (allocate_status != kTfLiteOk) {
-    TF_LITE_REPORT_ERROR(error_reporter, "AllocateTensors() failed");
-    return;
+      TF_LITE_REPORT_ERROR(error_reporter, "AllocateTensors() failed");
+      return;
   }
 
-  sprintf(buf, "allocate status: %d", allocate_status);
-  lcd.DisplayStringAt(0, LINE(4), (uint8_t *)buf, CENTER_MODE);
+  // sprintf(buf, "allocate status: %d", allocate_status);
+  // lcd.DisplayStringAt(0, LINE(4), (uint8_t *)buf, CENTER_MODE);
 
   // Obtain pointers to the model's input and output tensors.
   input = interpreter->input(0);
@@ -172,32 +180,65 @@ int nn_classify_single(const float features[])
 int nn_classify_single_from_data(const float data[])
 {
   // pass input data
-  lcd.DisplayStringAt(0, LINE(1), (uint8_t *)"set input data", CENTER_MODE);
+  // lcd.DisplayStringAt(0, LINE(1), (uint8_t *)"set input data", CENTER_MODE);
 
-  const float *f = data;
+#if USE_LCD
+  const int rows = input->dims->data[1];
+  const int cols = input->dims->data[2];
+  char buf[100];
+  sprintf(buf, "dims = %u (%d %d %d %d)", input->dims->size,
+          input->dims->data[0], input->dims->data[1], input->dims->data[2], input->dims->data[3]);
+  lcd.DisplayStringAt(0, LINE(10), (uint8_t *)buf, CENTER_MODE);
+#endif
+
   int i;
-  for (i = 0; i < WINDOW_SIZE; ++i) {
-    input->data.f[i] = f[i];
+
+  // const float *f = data;
+  // for (i = 0; i < WINDOW_SIZE; ++i) {
+  //     input->data.f[i] = f[i];
+  // }
+  for (i = 0; i < WINDOW_SIZE * 3; ++i) {
+      input->data.int8[i] = (int8_t)i;
   }
 
-  lcd.DisplayStringAt(0, LINE(2), (uint8_t *)"input data set", CENTER_MODE);
+  // for (i = 0; i < WINDOW_SIZE; ++i) {
+  //     input->data.int8[i] = (int8_t)(i * 3);
+  //     input->data.int8[i + WINDOW_SIZE] = (int8_t)(i * 3 + 1);
+  //     input->data.int8[i + WINDOW_SIZE * 2] = (int8_t)(i * 3 + 2);
+  // }
+
+  // lcd.DisplayStringAt(0, LINE(2), (uint8_t *)"input data set", CENTER_MODE);
 
   // Run inference, and report any error
   TfLiteStatus invoke_status = interpreter->Invoke();
-  lcd.DisplayStringAt(0, LINE(3), (uint8_t *)"invoke done", CENTER_MODE);
+  // lcd.DisplayStringAt(0, LINE(3), (uint8_t *)"invoke done", CENTER_MODE);
 
   if (invoke_status != kTfLiteOk) {
       TF_LITE_REPORT_ERROR(error_reporter, "Invoke failed\n");
       return -1;
   }
 
+
   // select the best class
   int best_class = 0;
   for (i = 0; i < NUM_LABELS; ++i) {
-      if (output->data.f[i] > output->data.f[best_class]) {
+//      if (output->data.f[i] > output->data.f[best_class]) {
+      if (output->data.int8[i] > output->data.int8[best_class]) {
           best_class = i;
       }
   }
+
+//  sprintf(buf, "class=%d val=%d", best_class, output->data.int8[best_class]);
+#if USE_LCD
+  sprintf(buf, "%d %d %d %d %d %d",
+          output->data.int8[0], output->data.int8[1], output->data.int8[2],
+          output->data.int8[3], output->data.int8[4], output->data.int8[5]);
+  lcd.DisplayStringAt(0, LINE(4), (uint8_t *)buf, CENTER_MODE);
+  sprintf(buf, "%d %d %d %d %d %d",
+          output->data.int8[6], output->data.int8[7], output->data.int8[8],
+          output->data.int8[9], output->data.int8[10], output->data.int8[11]);
+  lcd.DisplayStringAt(0, LINE(5), (uint8_t *)buf, CENTER_MODE);
+#endif
 
   return best_class;
 }
