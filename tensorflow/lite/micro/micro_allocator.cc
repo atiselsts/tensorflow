@@ -385,7 +385,6 @@ TfLiteStatus FlatBufferVectorToTfLiteTypeArray(
     *result = const_cast<kTfLiteArrayType*>(
         reinterpret_cast<const kTfLiteArrayType*>(flatbuffer_array));
   } else {
-      printf("FLATBUFFERS_BIG ENDIAN\n");
     // Big-endian architecture can not use the same memory layout as
     // flatbuffers::Vector<kFlatBufferVectorType>. Allocate from the tail and
     // copy values from the flatbuffer into the newly allocated chunk.
@@ -448,8 +447,6 @@ TfLiteStatus InitializeTfLiteTensorFromFlatbuffer(
     ErrorReporter* error_reporter, TfLiteTensor* result) {
   TFLITE_DCHECK(result != nullptr);
 
-  printf("InitializeTfLiteTensorFromFlatbuffer\n");
-
   *result = {};
   // Make sure the serialized type is one we know how to deal with, and convert
   // it from a flatbuffer enum into a constant used by the kernel C API.
@@ -478,21 +475,10 @@ TfLiteStatus InitializeTfLiteTensorFromFlatbuffer(
       flatbuffer_tensor, &result->bytes, &type_size, error_reporter));
 
   if (flatbuffer_tensor.shape() == nullptr) {
-      printf("  flatbuffer_tensor.shape() == nullptr\n");
     // flatbuffer_tensor.shape() can return a nullptr in the case of a scalar
     // tensor.
     result->dims = const_cast<TfLiteIntArray*>(&kZeroLengthIntArray);
   } else {
-      printf("  init dims from flatbuffer_tensor.shape()=%x\n", (unsigned)flatbuffer_tensor.shape());
-
-      auto flat_array = flatbuffer_tensor.shape();
-//      std::vector<int> ret(flat_array->size());
-      printf("  size=%d\n", (int)flat_array->size());
-      for (int i = 0; i < flat_array->size(); i++) {
-          //ret[i] = flat_array->Get(i);
-          printf("  shape[%d]=%d\n", i, (int)flat_array->Get(i));
-      }
-
     // TFLM doesn't allow reshaping the tensor which requires dynamic memory
     // allocation so it is safe to drop the const qualifier. In the future, if
     // we really want to update the tensor shape, we can always pass in a new
@@ -871,8 +857,6 @@ TfLiteTensor* MicroAllocator::AllocatePersistentTfLiteTensor(
   TfLiteTensor* tensor =
       AllocatePersistentTfLiteTensorInternal(model, eval_tensors, tensor_index);
 
-  printf("AllocatePersistentTfLiteTensor %d\n", tensor_index);
-  
   // Populate any fields from the flatbuffer, since this TfLiteTensor struct is
   // allocated in the persistent section of the arena, ensure that additional
   // allocations also take place in that section of the arena.
