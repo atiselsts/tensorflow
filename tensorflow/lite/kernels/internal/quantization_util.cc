@@ -59,16 +59,13 @@ void QuantizeMultiplier(double double_multiplier, int32_t* quantized_multiplier,
     *shift = 0;
     return;
   }
-//#ifdef TFLITE_EMULATE_FLOAT
-#if 1
-//  printf("QuantizeMultiplier: emulate float\n");
+#ifdef TFLITE_EMULATE_FLOAT
   // If we're trying to avoid the use of floating-point instructions (for
   // example on microcontrollers) then use an alternative implementation
   // that only requires integer and bitwise operations. To enable this, you
   // need to set the define during the build process for your platform.
   int64_t q_fixed = IntegerFrExp(double_multiplier, shift);
 #else   // TFLITE_EMULATE_FLOAT
-//  printf("QuantizeMultiplier: use float\n");
   const double q = std::frexp(double_multiplier, shift);
   auto q_fixed = static_cast<int64_t>(TfLiteRound(q * (1ll << 31)));
 #endif  // TFLITE_EMULATE_FLOAT
@@ -77,7 +74,6 @@ void QuantizeMultiplier(double double_multiplier, int32_t* quantized_multiplier,
     q_fixed /= 2;
     ++*shift;
   }
-//  printf("QuantizeMultiplier: done\n");
   TFLITE_CHECK_LE(q_fixed, std::numeric_limits<int32_t>::max());
   // A shift amount smaller than -31 would cause all bits to be shifted out
   // and thus all results would be zero. We implement that instead with
@@ -284,8 +280,7 @@ void PreprocessSoftmaxScaling(double beta, double input_scale,
   // result is double equivalent of Q0.31 (actually with more precision). Thus
   // this generates a Q(input_integer_bits).(31-input_integer_bits)
   // representation.
-//#ifdef TFLITE_EMULATE_FLOAT
-#if 1
+#ifdef TFLITE_EMULATE_FLOAT
   const double input_beta = IntegerDoubleMultiply(beta, input_scale);
   int shift;
   int64_t fraction = IntegerFrExp(input_beta, &shift);
@@ -323,8 +318,7 @@ void PreprocessLogSoftmaxScalingExp(double beta, double input_scale,
 
 int CalculateInputRadius(int input_integer_bits, int input_left_shift,
                          int total_signed_bits) {
-//#ifdef TFLITE_EMULATE_FLOAT
-#if 1
+#ifdef TFLITE_EMULATE_FLOAT
   int64_t result = (1 << input_integer_bits) - 1;
   result <<= (total_signed_bits - input_integer_bits);
   result >>= input_left_shift;

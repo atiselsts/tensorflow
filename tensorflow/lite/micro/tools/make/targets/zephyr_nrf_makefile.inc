@@ -22,6 +22,9 @@ PLATFORM_FLAGS = \
   -MMD \
   -mcpu=cortex-m4 \
   -mthumb \
+  -mabi=aapcs \
+  -mfloat-abi=hard \
+  -mfpu=fpv4-sp-d16 \
   -Wall \
   -Wextra \
   -Wno-shadow \
